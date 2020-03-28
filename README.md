@@ -65,7 +65,7 @@ UpdatedCar updateIfExists(CarUpdated event) {
     .execute(() -> cars.get(event.getCarId()))  
     .filter(Optional::isPresent)
     .map(Optional::get)
-    .supply(event::toCar)   // this should be replaced in the future with more fitting API
+    .supply(event::toCar)
     .map(car -> cars.store(car.getCarId(), car))
     .map(UpdatedCar::fromCar)
     .execute();
