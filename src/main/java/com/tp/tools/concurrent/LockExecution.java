@@ -21,11 +21,43 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+/**
+ * <p>Fluent lock execution API.</p>
+ * <p></p>
+ * <p>Allows user to chain consequent executions within a single lock and
+ * execute them in a single call.</p>
+ *
+ * <p>Example usage:</p>
+ * <p>
+ * <code>
+ * <br/>
+ * <br/>private final Store<CarId, Car> cars = ... // some store containing cars by carIds
+ * <br/>
+ * <br/>UpdatedCar updateIfExists(CarUpdated event) {
+ * <br/>&nbsp;&nbsp;return LockExecution.<Optional<Car>>withLock(writeLock()) // get write lock
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.execute(() -> cars.get(event.getCarId()))  // let's assume, store
+ * returns Optional<Car>
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.filter(Optional::isPresent)
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.map(Optional::get)
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.supply(ignore -> event.toCar())
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.map(car -> cars.store(car.getCarId(), car))
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.map(UpdatedCar::fromCar)
+ * <br/>&nbsp;&nbsp;&nbsp;&nbsp;.execute();
+ * <br/>}
+ * </code>
+ * </p>
+ *
+ * @param <T> return type of the execution.
+ */
 public interface LockExecution<T> {
 
   <K> LockExecution<K> map(final Function<T, K> mapper);
 
   <K> LockExecution<K> flatMap(final Function<T, LockExecution<K>> mapper);
+
+  LockExecution<Void> run(final Runnable runnable);
+
+  <K> LockExecution<K> supply(final Supplier<K> supplier);
 
   LockExecution<T> filter(final Predicate<T> predicate);
 
@@ -33,6 +65,11 @@ public interface LockExecution<T> {
 
   static <T> LockExecutionLockBuilder<T> withLock(final Lock lock) {
     return new LockExecutionLockBuilder<>(lock);
+  }
+
+  @SuppressWarnings("unchecked")
+  static <T> LockExecution<T> none() {
+    return (LockExecution<T>) LockExecutionNone.NONE;
   }
 
   private static <T> LockExecution<T> of(final Lock lock, final Supplier<T> action) {
@@ -81,12 +118,22 @@ public interface LockExecution<T> {
 
     @Override
     public <K> LockExecution<K> map(final Function<T, K> mapper) {
-      return none();
+      return LockExecution.none();
     }
 
     @Override
     public <K> LockExecution<K> flatMap(final Function<T, LockExecution<K>> mapper) {
-      return none();
+      return LockExecution.none();
+    }
+
+    @Override
+    public LockExecution<Void> run(final Runnable runnable) {
+      return LockExecution.none();
+    }
+
+    @Override
+    public <K> LockExecution<K> supply(final Supplier<K> supplier) {
+      return LockExecution.none();
     }
 
     @Override
@@ -96,12 +143,7 @@ public interface LockExecution<T> {
 
     @Override
     public T execute() {
-      return action.apply(null);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> LockExecution<T> none() {
-      return (LockExecution<T>) NONE;
+      return null;
     }
   }
 
@@ -134,8 +176,26 @@ public interface LockExecution<T> {
     }
 
     @Override
+    public LockExecution<Void> run(final Runnable runnable) {
+      return LockExecution.of(lock, () ->
+          this.action
+              .andThen(ignore -> runRunnable(runnable))
+              .apply(null)
+      );
+    }
+
+    @Override
+    public <K> LockExecution<K> supply(final Supplier<K> supplier) {
+      return LockExecution.of(lock, () ->
+          this.action
+              .andThen(ignore -> supplier.get())
+              .apply(null)
+      );
+    }
+
+    @Override
     public LockExecution<T> filter(final Predicate<T> predicate) {
-      return this.flatMap(ret -> predicate.test(ret) ? this : LockExecutionNone.none());
+      return this.flatMap(ret -> predicate.test(ret) ? this : LockExecution.none());
     }
 
     @Override
@@ -146,6 +206,11 @@ public interface LockExecution<T> {
       } finally {
         lock.unlock();
       }
+    }
+
+    private Void runRunnable(final Runnable runnable) {
+      runnable.run();
+      return null;
     }
   }
 }

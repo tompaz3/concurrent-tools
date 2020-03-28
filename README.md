@@ -18,7 +18,7 @@ Releases the lock using `try-finally` block.
 This might be improved using some persistence in case error occurred resulting in impossibility to
 call the `try-finally` block.
 
-```java
+```
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
 UpdatedCar updateIfExists(CarUpdated event) {
@@ -26,13 +26,29 @@ UpdatedCar updateIfExists(CarUpdated event) {
     .execute(() -> cars.get(event.getCarId()))  // let's assume, store returns Optional<Car>
     .filter(Optional::isPresent)
     .map(Optional::get)
-    .map(ignore -> event.toCar())   // this should be replaced in the future with more fitting API
+    .supply(event::toCar)
     .map(car -> cars.store(car.getCarId(), car))
     .map(UpdatedCar::fromCar)
     .execute();
 }
 ```
 
+#### Methods:
+
+* `.map(Function<T,K> mapper)` - applies `mapper` function to the current execution result
+and returns `LockExecution<K>` instance.
+* `.flatMap(Function<T,LockExecution<K>> mapper)` - applies `mapper` function to the current execution
+result and returns `mapper` result (`LockExecution<K>` instance).
+* `.supply(Supplier<K> supplier)` - ignores current execution result and generates new result.
+Returns `LockExecution<K>` intance with supplied result.
+* `.run(Runnable runnable)` - ignores current execution result and executes passed `runnable`.
+Always returns `LockExecution<Void>` type, which does not hold any result (`null`). 
+_// TODO: find better return value than `null` for this case_
+* `.filter(Predicate<T> predicate)` - applies `predicate` to the current execution result.
+    * if result doesn't pass the test, `LockExection.none()` is returned, which cannot perform
+    any operations and will return `null` value. _// TODO: find better return value than `null` 
+    for this case_
+    * if result passes the test, current `LocKExection` instance is returned
 
 ### ReadWriteLock
 This tool uses `java.util.concurrent.locks.ReadWriteLock` to provide lock.
@@ -40,7 +56,7 @@ Exposes `LockExecution` fluent API via `read(Supplier)`, `write(Supplier)` and `
 methods.
 
 Using `ReadWriteLock` provides lock and allows an example above to be rewritten to:
-```java
+```
 private final ReadWriteLock lock = ReadWriteLock.newInstance();
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
@@ -49,7 +65,7 @@ UpdatedCar updateIfExists(CarUpdated event) {
     .execute(() -> cars.get(event.getCarId()))  
     .filter(Optional::isPresent)
     .map(Optional::get)
-    .map(ignore -> event.toCar())   // this should be replaced in the future with more fitting API
+    .supply(event::toCar)   // this should be replaced in the future with more fitting API
     .map(car -> cars.store(car.getCarId(), car))
     .map(UpdatedCar::fromCar)
     .execute();

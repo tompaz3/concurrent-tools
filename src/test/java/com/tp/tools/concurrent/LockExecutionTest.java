@@ -16,6 +16,8 @@
 
 package com.tp.tools.concurrent;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -26,7 +28,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class LockExecutionTest {
@@ -51,34 +52,26 @@ class LockExecutionTest {
     // and task with write lock increasing list number and sleeping 250 ms before and 250 ms after change
     final LockExecution<Void> addListElementTask = LockExecution.<String>withLock(lock.writeLock())
         .execute(() -> list.get(0))
-        .map(ignore -> {
-          sleep(250);
-          return null;
-        })
-        .map(ignore -> {
-          list.add("A3");
-          return null;
-        })
-        .map(ignore -> {
+        .run(() -> sleep(250))
+        .run(() -> list.add("A3"))
+        .run(() -> {
           sleep(250);
           if (latch.getCount() != 3L) {
             throw new IllegalStateException();
           }
           latch.countDown();
-          return null;
         });
     // and another task with read lock which gets list size
     final LockExecution<Integer> getListSizeTaskWithLock = LockExecution.<String>withLock(
         lock.readLock())
         .execute(() -> list.get(1))
-        .map(ignore -> {
+        .run(() -> {
           if (latch.getCount() > 2L) {
             throw new IllegalStateException();
           }
           latch.countDown();
-          return null;
         })
-        .map(ignore -> list.size());
+        .supply(list::size);
     // and another task without lock which gets list size
     final Supplier<Integer> getListTaskWithoutLock = () -> {
       if (latch.getCount() > 2L) {
@@ -100,11 +93,11 @@ class LockExecutionTest {
         .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
-    Assertions.assertThat(secondFuture.join()).isEqualTo(expectedSize);
+    assertThat(secondFuture.join()).isEqualTo(expectedSize);
     // and third future returns expected size
-    Assertions.assertThat(thirdFuture.join()).isEqualTo(expectedSize);
+    assertThat(thirdFuture.join()).isEqualTo(expectedSize);
     // and latch is already 0
-    Assertions.assertThat(latch.getCount()).isEqualTo(0L);
+    assertThat(latch.getCount()).isEqualTo(0L);
   }
 
   @Test
@@ -127,28 +120,19 @@ class LockExecutionTest {
     // and task read write lock increasing list number and sleeping 500 ms before and 250 ms after change
     final LockExecution<Void> addListElementTask = LockExecution.<String>withLock(lock.readLock())
         .execute(() -> list.get(0))
-        .map(ignore -> {
-          sleep(500L);
-          return null;
-        })
-        .map(ignore -> {
-          list.add("A3");
-          return null;
-        })
-        .map(ignore -> {
+        .map(s -> s.substring(1))
+        .run(() -> sleep(500L))
+        .run(() -> list.add("A3"))
+        .run(() -> {
           sleep(250);
           latch.countDown();
-          return null;
         });
     // and another task with read lock which gets list size
     final LockExecution<Integer> getListSizeTaskWithLock = LockExecution.<String>withLock(
         lock.readLock())
         .execute(() -> list.get(1))
-        .map(ignore -> {
-          latch.countDown();
-          return null;
-        })
-        .map(ignore -> list.size());
+        .run(latch::countDown)
+        .supply(list::size);
     // and another task without lock which gets list size
     final Supplier<Integer> getListTaskWithoutLock = () -> {
       latch.countDown();
@@ -167,11 +151,11 @@ class LockExecutionTest {
         .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
-    Assertions.assertThat(secondFuture.join()).isEqualTo(initialSize);
+    assertThat(secondFuture.join()).isEqualTo(initialSize);
     // and third future returns expected size
-    Assertions.assertThat(thirdFuture.join()).isEqualTo(initialSize);
+    assertThat(thirdFuture.join()).isEqualTo(initialSize);
     // and latch not yet finished counting down
-    Assertions.assertThat(latch.getCount()).isGreaterThan(0L);
+    assertThat(latch.getCount()).isGreaterThan(0L);
   }
 
   private ExecutorService givenExecutorService() {
