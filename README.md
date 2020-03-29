@@ -14,9 +14,7 @@ This interface allows functional style `.map()`, `.flatMap()` and `.filter()` op
 supposed to be executed within a single lock context. More operations might be added to provide 
 even more useful and fluent API.
 
-Releases the lock using `try-finally` block.
-This might be improved using some persistence in case error occurred resulting in impossibility to
-call the `try-finally` block.
+After having executed provided commands, the lock is released in the `try-finally` block.
 
 ```
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
