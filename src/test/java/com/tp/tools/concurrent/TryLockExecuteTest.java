@@ -46,9 +46,6 @@ class TryLockExecuteTest {
   @Test
   void testValuesRightIdentity() {
     // given
-    final Function<Integer, TryLockExecute<Integer, String>> flatMapper = i -> i < 10
-        ? TryLockExecute.ofError("Lower than 10")
-        : TryLockExecute.of(i - 10);
     final TryLockExecute<Integer, String> value = TryLockExecute.of(20);
 
     // when
@@ -108,43 +105,42 @@ class TryLockExecuteTest {
   @Test
   void testErrorsRightIdentity() {
     // given
-    final Function<Integer, TryLockExecute<Integer, String>> flatMapper = i -> i < 10
-        ? TryLockExecute.ofError("Lower than 10")
-        : TryLockExecute.of(i - 10);
-    final TryLockExecute<Integer, String> value = TryLockExecute.of(20);
+    final var errorMsg = "This is an error";
+    final TryLockExecute<Integer, String> value = TryLockExecute.ofError(errorMsg);
 
     // when
-    final TryLockExecute<Integer, String> tryLockExecute = value.flatMap(TryLockExecute::of);
-    final var value1 = value.value();
-    final var value2 = tryLockExecute.value();
+    final TryLockExecute<Integer, String> tryLockExecute = value
+        .flatMapError(TryLockExecute::ofError);
+    final var error1 = value.error();
+    final var error2 = tryLockExecute.error();
 
     // then
-    assertThat(value1).isEqualTo(value2);
-    throw new UnsupportedOperationException("Test not implemented yet");
+    assertThat(error1).isEqualTo(error2);
   }
 
   @Test
   void testErrorsAssociativityIdentity() {
     // given
-    final Function<Integer, TryLockExecute<Integer, String>> flatMapper = i -> i < 15
-        ? TryLockExecute.ofError("Lower than 15")
-        : TryLockExecute.of(i * 2);
-    final Function<Integer, TryLockExecute<Integer, String>> flatMapper2 = i -> i > 30
-        ? TryLockExecute.of(i + 1)
-        : TryLockExecute.ofError("Lower than 30");
-    final TryLockExecute<Integer, String> value = TryLockExecute.of(20);
+    final var errorMsg = "This is an error";
+    final var expectedMsg = "An error occurred";
+    final Function<String, TryLockExecute<Integer, String>> flatMapper = e -> e.contains("error")
+        ? TryLockExecute.ofError(expectedMsg)
+        : TryLockExecute.of(5);
+    final Function<String, TryLockExecute<Integer, String>> flatMapper2 = e -> expectedMsg.equals(e)
+        ? TryLockExecute.ofError("What an error")
+        : TryLockExecute.of(20);
+    final TryLockExecute<Integer, String> value = TryLockExecute.ofError(errorMsg);
 
     // when
     final TryLockExecute<Integer, String> tryLockExecute = value
-        .flatMap(flatMapper)
-        .flatMap(flatMapper2);
+        .flatMapError(flatMapper)
+        .flatMapError(flatMapper2);
     final TryLockExecute<Integer, String> tryLockExecute2 = value
-        .flatMap(i -> flatMapper.apply(i).flatMap(flatMapper2));
-    final var value1 = tryLockExecute.value();
-    final var value2 = tryLockExecute2.value();
+        .flatMapError(i -> flatMapper.apply(i).flatMapError(flatMapper2));
+    final var error1 = tryLockExecute.error();
+    final var error2 = tryLockExecute2.error();
 
     // then
-    assertThat(value1).isEqualTo(value2);
-    throw new UnsupportedOperationException("Test not implemented yet");
+    assertThat(error1).isEqualTo(error2);
   }
 }
