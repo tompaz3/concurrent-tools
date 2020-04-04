@@ -14,34 +14,53 @@
  *    limitations under the License.
  */
 
-package com.tp.tools.concurrent.lock;
+package com.tp.tools.concurrent;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
 
-public interface TryLockExecute<T, E> {
+// TODO: this should be in some different library, actually
+public interface TryExecute<T, E> {
 
-  <K> TryLockExecute<K, E> map(Function<T, K> mapper);
+  <K> TryExecute<K, E> map(Function<T, K> mapper);
 
-  <K> TryLockExecute<K, E> flatMap(final Function<T, TryLockExecute<K, E>> mapper);
+  <K> TryExecute<K, E> flatMap(final Function<T, TryExecute<K, E>> mapper);
 
-  <K> TryLockExecute<T, K> mapError(Function<E, K> mapper);
+  <K> TryExecute<T, K> mapError(Function<E, K> mapper);
 
-  <K> TryLockExecute<T, K> flatMapError(final Function<E, TryLockExecute<T, K>> mapper);
+  <K> TryExecute<T, K> flatMapError(final Function<E, TryExecute<T, K>> mapper);
 
   T value();
 
   E error();
 
-  static <T, E> TryLockExecute<T, E> of(final T value) {
+  boolean isSuccess();
+
+  default boolean isError() {
+    return !isSuccess();
+  }
+
+  //region functions for side effects handling
+  TryExecute<T, E> onSuccess(Consumer<T> action);
+
+  TryExecute<T, E> onError(Consumer<E> action);
+
+  TryExecute<T, E> onSuccess(Runnable action);
+
+  TryExecute<T, E> onError(Runnable action);
+  //endregion
+
+
+  static <T, E> TryExecute<T, E> of(final T value) {
     return new Success<>(ignore -> value);
   }
 
-  static <T, E> TryLockExecute<T, E> ofError(final E error) {
+  static <T, E> TryExecute<T, E> ofError(final E error) {
     return new Failure<>(ignore -> error);
   }
 
 
-  interface TryLockExecuteWithValues<T, E> extends TryLockExecute<T, E> {
+  interface TryExecuteWithValues<T, E> extends TryExecute<T, E> {
 
     Function<Void, T> valueFunction();
 
@@ -58,33 +77,65 @@ public interface TryLockExecute<T, E> {
     }
 
     @Override
-    default <K> TryLockExecute<K, E> map(final Function<T, K> mapper) {
+    default <K> TryExecute<K, E> map(final Function<T, K> mapper) {
       return new Success<>(ignore -> this.valueFunction().andThen(mapper).apply(null));
     }
 
     @Override
-    default <K> TryLockExecute<K, E> flatMap(final Function<T, TryLockExecute<K, E>> mapper) {
+    default <K> TryExecute<K, E> flatMap(final Function<T, TryExecute<K, E>> mapper) {
       return new Success<>(ignore -> {
-        final TryLockExecute<K, E> apply = this.valueFunction().andThen(mapper).apply(null);
-        return ((TryLockExecuteWithValues<K, E>) apply).valueFunction().apply(null);
+        final TryExecute<K, E> apply = this.valueFunction().andThen(mapper).apply(null);
+        return ((TryExecuteWithValues<K, E>) apply).valueFunction().apply(null);
       });
     }
 
     @Override
-    default <K> TryLockExecute<T, K> mapError(final Function<E, K> mapper) {
+    default <K> TryExecute<T, K> mapError(final Function<E, K> mapper) {
       return new Failure<>(ignore -> this.errorFunction().andThen(mapper).apply(null));
     }
 
     @Override
-    default <K> TryLockExecute<T, K> flatMapError(final Function<E, TryLockExecute<T, K>> mapper) {
+    default <K> TryExecute<T, K> flatMapError(final Function<E, TryExecute<T, K>> mapper) {
       return new Failure<>(ignore -> {
-        final TryLockExecute<T, K> apply = this.errorFunction().andThen(mapper).apply(null);
-        return ((TryLockExecuteWithValues<T, K>) apply).errorFunction().apply(null);
+        final TryExecute<T, K> apply = this.errorFunction().andThen(mapper).apply(null);
+        return ((TryExecuteWithValues<T, K>) apply).errorFunction().apply(null);
+      });
+    }
+
+    @Override
+    default TryExecute<T, E> onSuccess(final Consumer<T> action) {
+      return map(value -> {
+        action.accept(value);
+        return value;
+      });
+    }
+
+    @Override
+    default TryExecute<T, E> onError(final Consumer<E> action) {
+      return mapError(error -> {
+        action.accept(error);
+        return error;
+      });
+    }
+
+    @Override
+    default TryExecute<T, E> onSuccess(final Runnable action) {
+      return map(value -> {
+        action.run();
+        return value;
+      });
+    }
+
+    @Override
+    default TryExecute<T, E> onError(final Runnable action) {
+      return mapError(error -> {
+        action.run();
+        return error;
       });
     }
   }
 
-  class Success<T, E> implements TryLockExecuteWithValues<T, E> {
+  class Success<T, E> implements TryExecuteWithValues<T, E> {
 
     private static final Function<Void, ?> NO_ERROR_FUNCTION = ignore -> {
       throw new UnsupportedOperationException();
@@ -110,9 +161,14 @@ public interface TryLockExecute<T, E> {
     private static <E> Function<Void, E> noErrorFunction() {
       return (Function<Void, E>) NO_ERROR_FUNCTION;
     }
+
+    @Override
+    public boolean isSuccess() {
+      return true;
+    }
   }
 
-  class Failure<T, E> implements TryLockExecuteWithValues<T, E> {
+  class Failure<T, E> implements TryExecuteWithValues<T, E> {
 
     private static final Function<Void, ?> NO_VALUE_FUNCTION = ignore -> {
       throw new UnsupportedOperationException();
@@ -137,6 +193,11 @@ public interface TryLockExecute<T, E> {
     @SuppressWarnings("unchecked")
     private static <T> Function<Void, T> noValueFunction() {
       return (Function<Void, T>) NO_VALUE_FUNCTION;
+    }
+
+    @Override
+    public boolean isSuccess() {
+      return false;
     }
   }
 }

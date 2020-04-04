@@ -16,6 +16,7 @@
 
 package com.tp.tools.concurrent.lock;
 
+import com.tp.tools.concurrent.TryExecute;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -61,7 +62,7 @@ public interface LockExecution<T> {
 
   LockExecution<T> filter(final Predicate<T> predicate);
 
-  TryLockExecute<T, Throwable> execute();
+  TryExecute<T, Throwable> execute();
 
   static <T> LockExecutionLockBuilder<T> withLock(final Lock lock) {
     return new LockExecutionLockBuilder<>(lock);
@@ -122,8 +123,8 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public TryLockExecute<T, Throwable> execute() {
-      return TryLockExecute.of(null);
+    public TryExecute<T, Throwable> execute() {
+      return TryExecute.of(null);
     }
   }
 
@@ -179,16 +180,16 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public TryLockExecute<T, Throwable> execute() {
+    public TryExecute<T, Throwable> execute() {
       try {
         lock.lock();
       } catch (final Exception e) {
-        return TryLockExecute.ofError(e);
+        return TryExecute.ofError(e);
       }
       try {
-        return TryLockExecute.of(action.apply(null));
+        return TryExecute.of(action.apply(null));
       } catch (final Exception e) {
-        return TryLockExecute.ofError(e);
+        return TryExecute.ofError(e);
       } finally {
         lock.unlock();
       }

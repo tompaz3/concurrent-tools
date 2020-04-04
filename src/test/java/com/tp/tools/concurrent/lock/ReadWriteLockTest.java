@@ -16,6 +16,7 @@
 
 package com.tp.tools.concurrent.lock;
 
+import com.tp.tools.concurrent.TryExecute;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -85,11 +86,11 @@ class ReadWriteLockTest {
     };
 
     // when run first future
-    final CompletableFuture<TryLockExecute<Void, Throwable>> firstFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Void, Throwable>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<TryLockExecute<Integer, Throwable>> secondFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Integer, Throwable>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
@@ -149,11 +150,11 @@ class ReadWriteLockTest {
     };
 
     // when run first future
-    final CompletableFuture<TryLockExecute<Void, Throwable>> firstFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Void, Throwable>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<TryLockExecute<Integer, Throwable>> secondFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Integer, Throwable>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
