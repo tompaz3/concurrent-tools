@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package com.tp.tools.concurrent;
+package com.tp.tools.concurrent.lock;
 
 import java.util.function.Function;
 

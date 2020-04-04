@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package com.tp.tools.concurrent;
+package com.tp.tools.concurrent.lock;
 
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
@@ -61,7 +61,7 @@ public interface LockExecution<T> {
 
   LockExecution<T> filter(final Predicate<T> predicate);
 
-  T execute();
+  TryLockExecute<T, Throwable> execute();
 
   static <T> LockExecutionLockBuilder<T> withLock(final Lock lock) {
     return new LockExecutionLockBuilder<>(lock);
@@ -74,26 +74,6 @@ public interface LockExecution<T> {
 
   private static <T> LockExecution<T> of(final Lock lock, final Supplier<T> action) {
     return new LockExecutionSome<>(lock, action);
-  }
-
-  class LockExecutionLockBuilder<T> {
-
-    private final Lock lock;
-
-    private LockExecutionLockBuilder(final Lock lock) {
-      this.lock = lock;
-    }
-
-    public LockExecution<T> execute(final Supplier<T> action) {
-      return LockExecution.of(lock, action);
-    }
-
-    public LockExecution<Void> execute(final Runnable action) {
-      return LockExecution.of(lock, () -> {
-        action.run();
-        return null;
-      });
-    }
   }
 
   interface LockExecutionWithAction<T> extends LockExecution<T> {
@@ -142,8 +122,8 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public T execute() {
-      return null;
+    public TryLockExecute<T, Throwable> execute() {
+      return TryLockExecute.of(null);
     }
   }
 
@@ -199,10 +179,16 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public T execute() {
-      lock.lock();
+    public TryLockExecute<T, Throwable> execute() {
       try {
-        return action.apply(null);
+        lock.lock();
+      } catch (final Exception e) {
+        return TryLockExecute.ofError(e);
+      }
+      try {
+        return TryLockExecute.of(action.apply(null));
+      } catch (final Exception e) {
+        return TryLockExecute.ofError(e);
       } finally {
         lock.unlock();
       }
@@ -213,4 +199,26 @@ public interface LockExecution<T> {
       return null;
     }
   }
+
+  //region builders
+  class LockExecutionLockBuilder<T> {
+
+    private final Lock lock;
+
+    private LockExecutionLockBuilder(final Lock lock) {
+      this.lock = lock;
+    }
+
+    public LockExecution<T> execute(final Supplier<T> action) {
+      return LockExecution.of(lock, action);
+    }
+
+    public LockExecution<Void> execute(final Runnable action) {
+      return LockExecution.of(lock, () -> {
+        action.run();
+        return null;
+      });
+    }
+  }
+//endregion
 }
