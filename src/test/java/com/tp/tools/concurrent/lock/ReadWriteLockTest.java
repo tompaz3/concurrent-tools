@@ -86,11 +86,11 @@ class ReadWriteLockTest {
     };
 
     // when run first future
-    final CompletableFuture<TryExecute<Void, Throwable>> firstFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Void>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<TryExecute<Integer, Throwable>> secondFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
@@ -150,11 +150,11 @@ class ReadWriteLockTest {
     };
 
     // when run first future
-    final CompletableFuture<TryExecute<Void, Throwable>> firstFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Void>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<TryExecute<Integer, Throwable>> secondFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture

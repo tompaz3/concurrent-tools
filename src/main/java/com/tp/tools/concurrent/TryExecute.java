@@ -20,15 +20,15 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 // TODO: this should be in some different library, actually
-public interface TryExecute<T, E> {
+public interface TryExecute<E, T> {
 
-  <K> TryExecute<K, E> map(Function<T, K> mapper);
+  <K> TryExecute<E, K> map(Function<T, K> mapper);
 
-  <K> TryExecute<K, E> flatMap(final Function<T, TryExecute<K, E>> mapper);
+  <K> TryExecute<E, K> flatMap(final Function<T, TryExecute<E, K>> mapper);
 
-  <K> TryExecute<T, K> mapError(Function<E, K> mapper);
+  <K> TryExecute<K, T> mapError(Function<E, K> mapper);
 
-  <K> TryExecute<T, K> flatMapError(final Function<E, TryExecute<T, K>> mapper);
+  <K> TryExecute<K, T> flatMapError(final Function<E, TryExecute<K, T>> mapper);
 
   T value();
 
@@ -41,26 +41,26 @@ public interface TryExecute<T, E> {
   }
 
   //region functions for side effects handling
-  TryExecute<T, E> onSuccess(Consumer<T> action);
+  TryExecute<E, T> onSuccess(Consumer<T> action);
 
-  TryExecute<T, E> onError(Consumer<E> action);
+  TryExecute<E, T> onError(Consumer<E> action);
 
-  TryExecute<T, E> onSuccess(Runnable action);
+  TryExecute<E, T> onSuccess(Runnable action);
 
-  TryExecute<T, E> onError(Runnable action);
+  TryExecute<E, T> onError(Runnable action);
   //endregion
 
 
-  static <T, E> TryExecute<T, E> of(final T value) {
+  static <E, T> TryExecute<E, T> of(final T value) {
     return new Success<>(ignore -> value);
   }
 
-  static <T, E> TryExecute<T, E> ofError(final E error) {
+  static <E, T> TryExecute<E, T> ofError(final E error) {
     return new Failure<>(ignore -> error);
   }
 
 
-  interface TryExecuteWithValues<T, E> extends TryExecute<T, E> {
+  interface TryExecuteWithValues<E, T> extends TryExecute<E, T> {
 
     Function<Void, T> valueFunction();
 
@@ -77,33 +77,33 @@ public interface TryExecute<T, E> {
     }
 
     @Override
-    default <K> TryExecute<K, E> map(final Function<T, K> mapper) {
+    default <K> TryExecute<E, K> map(final Function<T, K> mapper) {
       return new Success<>(ignore -> this.valueFunction().andThen(mapper).apply(null));
     }
 
     @Override
-    default <K> TryExecute<K, E> flatMap(final Function<T, TryExecute<K, E>> mapper) {
+    default <K> TryExecute<E, K> flatMap(final Function<T, TryExecute<E, K>> mapper) {
       return new Success<>(ignore -> {
-        final TryExecute<K, E> apply = this.valueFunction().andThen(mapper).apply(null);
-        return ((TryExecuteWithValues<K, E>) apply).valueFunction().apply(null);
+        final TryExecute<E, K> apply = this.valueFunction().andThen(mapper).apply(null);
+        return ((TryExecuteWithValues<E, K>) apply).valueFunction().apply(null);
       });
     }
 
     @Override
-    default <K> TryExecute<T, K> mapError(final Function<E, K> mapper) {
+    default <K> TryExecute<K, T> mapError(final Function<E, K> mapper) {
       return new Failure<>(ignore -> this.errorFunction().andThen(mapper).apply(null));
     }
 
     @Override
-    default <K> TryExecute<T, K> flatMapError(final Function<E, TryExecute<T, K>> mapper) {
+    default <K> TryExecute<K, T> flatMapError(final Function<E, TryExecute<K, T>> mapper) {
       return new Failure<>(ignore -> {
-        final TryExecute<T, K> apply = this.errorFunction().andThen(mapper).apply(null);
-        return ((TryExecuteWithValues<T, K>) apply).errorFunction().apply(null);
+        final TryExecute<K, T> apply = this.errorFunction().andThen(mapper).apply(null);
+        return ((TryExecuteWithValues<K, T>) apply).errorFunction().apply(null);
       });
     }
 
     @Override
-    default TryExecute<T, E> onSuccess(final Consumer<T> action) {
+    default TryExecute<E, T> onSuccess(final Consumer<T> action) {
       return map(value -> {
         action.accept(value);
         return value;
@@ -111,7 +111,7 @@ public interface TryExecute<T, E> {
     }
 
     @Override
-    default TryExecute<T, E> onError(final Consumer<E> action) {
+    default TryExecute<E, T> onError(final Consumer<E> action) {
       return mapError(error -> {
         action.accept(error);
         return error;
@@ -119,7 +119,7 @@ public interface TryExecute<T, E> {
     }
 
     @Override
-    default TryExecute<T, E> onSuccess(final Runnable action) {
+    default TryExecute<E, T> onSuccess(final Runnable action) {
       return map(value -> {
         action.run();
         return value;
@@ -127,7 +127,7 @@ public interface TryExecute<T, E> {
     }
 
     @Override
-    default TryExecute<T, E> onError(final Runnable action) {
+    default TryExecute<E, T> onError(final Runnable action) {
       return mapError(error -> {
         action.run();
         return error;
@@ -135,7 +135,7 @@ public interface TryExecute<T, E> {
     }
   }
 
-  class Success<T, E> implements TryExecuteWithValues<T, E> {
+  class Success<E, T> implements TryExecuteWithValues<E, T> {
 
     private static final Function<Void, ?> NO_ERROR_FUNCTION = ignore -> {
       throw new UnsupportedOperationException();
@@ -168,7 +168,7 @@ public interface TryExecute<T, E> {
     }
   }
 
-  class Failure<T, E> implements TryExecuteWithValues<T, E> {
+  class Failure<E, T> implements TryExecuteWithValues<E, T> {
 
     private static final Function<Void, ?> NO_VALUE_FUNCTION = ignore -> {
       throw new UnsupportedOperationException();

@@ -62,7 +62,7 @@ public interface LockExecution<T> {
 
   LockExecution<T> filter(final Predicate<T> predicate);
 
-  TryExecute<T, Throwable> execute();
+  TryExecute<Throwable, T> execute();
 
   static <T> LockExecutionLockBuilder<T> withLock(final Lock lock) {
     return new LockExecutionLockBuilder<>(lock);
@@ -123,7 +123,7 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public TryExecute<T, Throwable> execute() {
+    public TryExecute<Throwable, T> execute() {
       return TryExecute.of(null);
     }
   }
@@ -180,7 +180,7 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public TryExecute<T, Throwable> execute() {
+    public TryExecute<Throwable, T> execute() {
       try {
         lock.lock();
       } catch (final Exception e) {
