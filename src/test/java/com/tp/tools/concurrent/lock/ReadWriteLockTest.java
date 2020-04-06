@@ -14,8 +14,9 @@
  *    limitations under the License.
  */
 
-package com.tp.tools.concurrent;
+package com.tp.tools.concurrent.lock;
 
+import com.tp.tools.concurrent.TryExecute;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -85,18 +86,18 @@ class ReadWriteLockTest {
     };
 
     // when run first future
-    final CompletableFuture<Void> firstFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Void>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<Integer> secondFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
         .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
-    Assertions.assertThat(secondFuture.join()).isEqualTo(expectedSize);
+    Assertions.assertThat(secondFuture.join().value()).isEqualTo(expectedSize);
     // and third future returns expected size
     Assertions.assertThat(thirdFuture.join()).isEqualTo(expectedSize);
     // and latch is already 0
@@ -149,18 +150,18 @@ class ReadWriteLockTest {
     };
 
     // when run first future
-    final CompletableFuture<Void> firstFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Void>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<Integer> secondFuture = CompletableFuture
+    final CompletableFuture<TryExecute<Throwable, Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
         .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
-    Assertions.assertThat(secondFuture.join()).isEqualTo(initialSize);
+    Assertions.assertThat(secondFuture.join().value()).isEqualTo(initialSize);
     // and third future returns expected size
     Assertions.assertThat(thirdFuture.join()).isEqualTo(initialSize);
     // and latch not yet finished counting down

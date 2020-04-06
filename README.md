@@ -16,10 +16,13 @@ even more useful and fluent API.
 
 After having executed provided commands, the lock is released in the `try-finally` block.
 
+`execute()` method returns `TryLockExecute<Throwable, T>` object 
+(which is inspired by Try / Either monad implementation).
+
 ```
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
-UpdatedCar updateIfExists(CarUpdated event) {
+TryLockExecute<Throwable, UpdatedCar> updateIfExists(CarUpdated event) {
   return LockExecution.<Optional<Car>>withLock(writeLock()) // get write lock
     .execute(() -> cars.get(event.getCarId()))  // let's assume, store returns Optional<Car>
     .filter(Optional::isPresent)
@@ -58,7 +61,7 @@ Using `ReadWriteLock` provides lock and allows an example above to be rewritten 
 private final ReadWriteLock lock = ReadWriteLock.newInstance();
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
-UpdatedCar updateIfExists(CarUpdated event) {
+TryLockExecute<Throwable, UpdatedCar> updateIfExists(CarUpdated event) {
   return lock.write(() -> cars.get(event.getCarId())) // let's assume, store returns Optional<Car> 
     .execute(() -> cars.get(event.getCarId()))  
     .filter(Optional::isPresent)
