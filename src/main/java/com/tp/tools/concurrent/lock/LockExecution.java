@@ -16,7 +16,9 @@
 
 package com.tp.tools.concurrent.lock;
 
-import com.tp.tools.concurrent.TryExecute;
+import com.tp.tools.concurrent.lock.LockExecution.LockExecutionNone.LockExecutionLockBuilder;
+import com.tp.tools.concurrent.lock.LockExecution.LockExecutionNone.LockExecutionSome;
+import io.vavr.control.Try;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -27,6 +29,8 @@ import java.util.function.Supplier;
  * <p></p>
  * <p>Allows user to chain consequent executions within a single lock and
  * execute them in a single call.</p>
+ * <p>This is not a monad (does not comply with identity or associativity rules), but is strongly
+ * inspired by functional programming patterns</p>
  *
  * <p>Example usage:</p>
  * <p>
@@ -62,9 +66,9 @@ public interface LockExecution<T> {
 
   LockExecution<T> filter(final Predicate<T> predicate);
 
-  TryExecute<Throwable, T> execute();
+  Try<T> execute();
 
-  static <T> LockExecutionLockBuilder<T> withLock(final Lock lock) {
+  static <T> LockExecutionNone.LockExecutionLockBuilder<T> withLock(final Lock lock) {
     return new LockExecutionLockBuilder<>(lock);
   }
 
@@ -123,103 +127,103 @@ public interface LockExecution<T> {
     }
 
     @Override
-    public TryExecute<Throwable, T> execute() {
-      return TryExecute.of(null);
-    }
-  }
-
-  class LockExecutionSome<T> implements LockExecutionWithAction<T> {
-
-    private final Lock lock;
-    private final Function<Void, T> action;
-
-    private LockExecutionSome(final Lock lock, final Supplier<T> action) {
-      this.lock = lock;
-      this.action = ignore -> action.get();
+    public Try<T> execute() {
+      return Try.success(null);
     }
 
-    @Override
-    public Function<Void, T> action() {
-      return action;
-    }
+    static class LockExecutionSome<T> implements LockExecutionWithAction<T> {
 
-    @Override
-    public <K> LockExecution<K> map(final Function<T, K> mapper) {
-      return LockExecution.of(lock, () -> this.action.andThen(mapper).apply(null));
-    }
+      private final Lock lock;
+      private final Function<Void, T> action;
 
-    @Override
-    public <K> LockExecution<K> flatMap(final Function<T, LockExecution<K>> mapper) {
-      return LockExecution.of(lock, () -> {
-        final LockExecution<K> apply = this.action.andThen(mapper).apply(null);
-        return ((LockExecutionWithAction<K>) apply).action().apply(null);
-      });
-    }
-
-    @Override
-    public LockExecution<Void> run(final Runnable runnable) {
-      return LockExecution.of(lock, () ->
-          this.action
-              .andThen(ignore -> runRunnable(runnable))
-              .apply(null)
-      );
-    }
-
-    @Override
-    public <K> LockExecution<K> supply(final Supplier<K> supplier) {
-      return LockExecution.of(lock, () ->
-          this.action
-              .andThen(ignore -> supplier.get())
-              .apply(null)
-      );
-    }
-
-    @Override
-    public LockExecution<T> filter(final Predicate<T> predicate) {
-      return this.flatMap(ret -> predicate.test(ret) ? this : LockExecution.none());
-    }
-
-    @Override
-    public TryExecute<Throwable, T> execute() {
-      try {
-        lock.lock();
-      } catch (final Exception e) {
-        return TryExecute.ofError(e);
+      private LockExecutionSome(final Lock lock, final Supplier<T> action) {
+        this.lock = lock;
+        this.action = ignore -> action.get();
       }
-      try {
-        return TryExecute.of(action.apply(null));
-      } catch (final Exception e) {
-        return TryExecute.ofError(e);
-      } finally {
-        lock.unlock();
+
+      @Override
+      public Function<Void, T> action() {
+        return action;
       }
-    }
 
-    private Void runRunnable(final Runnable runnable) {
-      runnable.run();
-      return null;
-    }
-  }
+      @Override
+      public <K> LockExecution<K> map(final Function<T, K> mapper) {
+        return LockExecution.of(lock, () -> this.action.andThen(mapper).apply(null));
+      }
 
-  //region builders
-  class LockExecutionLockBuilder<T> {
+      @Override
+      public <K> LockExecution<K> flatMap(final Function<T, LockExecution<K>> mapper) {
+        return LockExecution.of(lock, () -> {
+          final LockExecution<K> apply = this.action.andThen(mapper).apply(null);
+          return ((LockExecutionWithAction<K>) apply).action().apply(null);
+        });
+      }
 
-    private final Lock lock;
+      @Override
+      public LockExecution<Void> run(final Runnable runnable) {
+        return LockExecution.of(lock, () ->
+            this.action
+                .andThen(ignore -> runRunnable(runnable))
+                .apply(null)
+        );
+      }
 
-    private LockExecutionLockBuilder(final Lock lock) {
-      this.lock = lock;
-    }
+      @Override
+      public <K> LockExecution<K> supply(final Supplier<K> supplier) {
+        return LockExecution.of(lock, () ->
+            this.action
+                .andThen(ignore -> supplier.get())
+                .apply(null)
+        );
+      }
 
-    public LockExecution<T> execute(final Supplier<T> action) {
-      return LockExecution.of(lock, action);
-    }
+      @Override
+      public LockExecution<T> filter(final Predicate<T> predicate) {
+        return this.flatMap(ret -> predicate.test(ret) ? this : LockExecution.none());
+      }
 
-    public LockExecution<Void> execute(final Runnable action) {
-      return LockExecution.of(lock, () -> {
-        action.run();
+      @Override
+      public Try<T> execute() {
+        try {
+          lock.lock();
+        } catch (final Exception e) {
+          return Try.failure(e);
+        }
+        try {
+          return Try.ofSupplier(() -> action.apply(null));
+        } catch (final Exception e) {
+          return Try.failure(e);
+        } finally {
+          lock.unlock();
+        }
+      }
+
+      private Void runRunnable(final Runnable runnable) {
+        runnable.run();
         return null;
-      });
+      }
     }
+
+    //region builders
+    static class LockExecutionLockBuilder<T> {
+
+      private final Lock lock;
+
+      private LockExecutionLockBuilder(final Lock lock) {
+        this.lock = lock;
+      }
+
+      public LockExecution<T> execute(final Supplier<T> action) {
+        return LockExecution.of(lock, action);
+      }
+
+      public LockExecution<Void> execute(final Runnable action) {
+        return LockExecution.of(lock, () -> {
+          action.run();
+          return null;
+        });
+      }
+    }
+    //endregion
   }
-//endregion
 }
