@@ -1,0 +1,41 @@
+<!--
+  ~ Copyright 2020 Tomasz Paździurek <t.pazdziurek@gmail.com>
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~      http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+<configuration xmlns="http://jgitver.github.io/maven/configuration/1.1.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://jgitver.github.io/maven/configuration/1.1.0 https://jgitver.github.io/maven/configuration/jgitver-configuration-v1_1_0.xsd">
+  <strategy>CONFIGURABLE</strategy>
+  <policy>LATEST</policy>    <!-- LookupPolicy to select the base tag/commit for the version computation -->
+  <autoIncrementPatch>true</autoIncrementPatch>
+  <useCommitDistance>true</useCommitDistance>
+  <useDirty>false</useDirty>
+  <useGitCommitId>true</useGitCommitId>
+  <gitCommitIdLength>8</gitCommitIdLength>  <!-- between [8,40] -->
+  <maxSearchDepth>10</maxSearchDepth>  <!-- upper or equal to 1, ommited otherwise, default to infinite -->
+  <nonQualifierBranches>master,dev,integration</nonQualifierBranches> <!-- comma separated, example "master,integration" -->
+<!--  <exclusions>    &lt;!&ndash; Optional list of directory path &ndash;&gt;-->
+<!--    <exclusion>relative directory path</exclusion>    &lt;!&ndash; relative path from project root directory &ndash;&gt;-->
+<!--  </exclusions>-->
+<!--  <useDefaultBranchingPolicy>true</useDefaultBranchingPolicy>   &lt;!&ndash; uses jgitver#BranchingPolicy#DEFAULT_FALLBACK as fallback branch policy&ndash;&gt;-->
+<!--  <branchPolicies>-->
+<!--    <branchPolicy>-->
+<!--      <pattern>pattern</pattern>                  &lt;!&ndash; regex pattern &ndash;&gt;-->
+<!--      &lt;!&ndash; list of transformations to apply, if empty, defaults to REPLACE_UNEXPECTED_CHARS_UNDERSCORE, LOWERCASE_EN &ndash;&gt;-->
+<!--      <transformations>-->
+<!--        <transformation>NAME</transformation> &lt;!&ndash; transformation name, one of jgitver#fr.brouillard.oss.jgitver.BranchingPolicy#BranchNameTransformations &ndash;&gt;-->
+<!--      </transformations>-->
+<!--    </branchPolicy>-->
+<!--  </branchPolicies>-->
+</configuration>
