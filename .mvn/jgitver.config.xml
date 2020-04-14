@@ -24,7 +24,7 @@
   <useGitCommitId>true</useGitCommitId>
   <gitCommitIdLength>8</gitCommitIdLength>  <!-- between [8,40] -->
   <maxSearchDepth>10</maxSearchDepth>  <!-- upper or equal to 1, ommited otherwise, default to infinite -->
-  <nonQualifierBranches>master,dev,integration</nonQualifierBranches> <!-- comma separated, example "master,integration" -->
+  <nonQualifierBranches>dev,integration</nonQualifierBranches> <!-- comma separated, example "master,integration" -->
 <!--  <exclusions>    &lt;!&ndash; Optional list of directory path &ndash;&gt;-->
 <!--    <exclusion>relative directory path</exclusion>    &lt;!&ndash; relative path from project root directory &ndash;&gt;-->
 <!--  </exclusions>-->
