@@ -18,7 +18,7 @@ package com.tp.tools.concurrent.lock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tp.tools.concurrent.TryExecute;
+import io.vavr.control.Try;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +36,7 @@ class LockExecutionTest {
   @Test
   void shouldBeLockedWhenTryingToExecuteConcurrentOperation() {
     // given lock
-    final java.util.concurrent.locks.ReadWriteLock lock = new ReentrantReadWriteLock();
+    final ReadWriteLock lock = new ReentrantReadWriteLock();
     // and list with 2 items
     final List<String> list = new ArrayList<>();
     list.add("A1");
@@ -83,18 +83,18 @@ class LockExecutionTest {
     };
 
     // when run first future
-    final CompletableFuture<TryExecute<Throwable, Void>> firstFuture = CompletableFuture
+    final CompletableFuture<Try<Void>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<TryExecute<Throwable, Integer>> secondFuture = CompletableFuture
+    final CompletableFuture<Try<Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
         .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
-    assertThat(secondFuture.join().value()).isEqualTo(expectedSize);
+    assertThat(secondFuture.join().get()).isEqualTo(expectedSize);
     // and third future returns expected size
     assertThat(thirdFuture.join()).isEqualTo(expectedSize);
     // and latch is already 0
@@ -141,24 +141,24 @@ class LockExecutionTest {
     };
 
     // when run first future
-    final CompletableFuture<TryExecute<Throwable, Void>> firstFuture = CompletableFuture
+    final CompletableFuture<Try<Void>> firstFuture = CompletableFuture
         .supplyAsync(addListElementTask::execute, executorService);
     // and 100 ms later run second future
     sleep(100);
-    final CompletableFuture<TryExecute<Throwable, Integer>> secondFuture = CompletableFuture
+    final CompletableFuture<Try<Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
     // and run third future
     final CompletableFuture<Integer> thirdFuture = CompletableFuture
         .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
-    assertThat(secondFuture.join().value()).isEqualTo(initialSize);
+    assertThat(secondFuture.join().get()).isEqualTo(initialSize);
     // and third future returns expected size
     assertThat(thirdFuture.join()).isEqualTo(initialSize);
     // and latch not yet finished counting down
     assertThat(latch.getCount()).isGreaterThan(0L);
   }
-
+  
   private ExecutorService givenExecutorService() {
     final ThreadFactory threadFactory = new LockExecutionThreadFactory(
         LockExecutionTest.class.getSimpleName(), 1, true);
