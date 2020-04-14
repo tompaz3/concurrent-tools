@@ -7,6 +7,22 @@ This project contains some simple concurrent tools:
 
 Project uses [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
+## Dependencies
+
+Project's dependencies are:
+1. [Vavr.io](https://www.vavr.io/) - library influenced by functional programming paradigms, introducing fluent, immutable 
+and monadic-like API into the Java world.
+
+Project's test dependencies are:
+1. [JUnit Jupiter](https://junit.org/junit5/docs/current/user-guide/) - Java testing framework (test dependency).
+1. [AssertJ](https://joel-costigliola.github.io/assertj/) - Java fluent assertions framework (test dependency).
+
+Maven plugins used by the project are:
+1. [Maven Surefire Plugin](http://maven.apache.org/surefire/maven-surefire-plugin/) - used for tests execution.
+1. [Maven Shade Plugin](http://maven.apache.org/plugins/maven-shade-plugin/) - used to build application fat JAR.
+1. [JGitVer Maven Plugin](https://github.com/jgitver/jgitver-maven-plugin) - used for version managing, based on Git VCS.
+1. [Maven Deploy Plugin](https://maven.apache.org/plugins/maven-deploy-plugin/) - used for artifact deployment.
+
 ## Usage
 ### LockExecution
 
@@ -16,13 +32,12 @@ even more useful and fluent API.
 
 After having executed provided commands, the lock is released in the `try-finally` block.
 
-`execute()` method returns `TryLockExecute<Throwable, T>` object 
-(which is inspired by Try / Either monad implementation).
+`execute()` method returns [Vavr.io](https://www.vavr.io/) `Try<T>`.
 
 ```
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
-TryLockExecute<Throwable, UpdatedCar> updateIfExists(CarUpdated event) {
+Try<UpdatedCar> updateIfExists(CarUpdated event) {
   return LockExecution.<Optional<Car>>withLock(writeLock()) // get write lock
     .execute(() -> cars.get(event.getCarId()))  // let's assume, store returns Optional<Car>
     .filter(Optional::isPresent)
@@ -61,7 +76,7 @@ Using `ReadWriteLock` provides lock and allows an example above to be rewritten 
 private final ReadWriteLock lock = ReadWriteLock.newInstance();
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
-TryLockExecute<Throwable, UpdatedCar> updateIfExists(CarUpdated event) {
+Try<UpdatedCar> updateIfExists(CarUpdated event) {
   return lock.write(() -> cars.get(event.getCarId())) // let's assume, store returns Optional<Car> 
     .execute(() -> cars.get(event.getCarId()))  
     .filter(Optional::isPresent)
