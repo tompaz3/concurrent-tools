@@ -16,6 +16,7 @@
 
 package com.tp.tools.concurrent.lock;
 
+import static com.tp.tools.concurrent.lock.TestUtils.sleep;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.vavr.control.Try;
@@ -24,8 +25,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
@@ -45,10 +44,10 @@ class LockExecutionTest {
     final int expectedSize = 3;
 
     // and executor service
-    final ExecutorService executorService = givenExecutorService();
+    final ExecutorService executorService = TestUtils.fixedThreadPoolExecutor(2);
 
     // and countdown latch
-    final CountDownLatch latch = new CountDownLatch(3);
+    final CountDownLatch latch = new CountDownLatch(2);
 
     // and task with write lock increasing list number and sleeping 250 ms before and 250 ms after change
     final LockExecution<Void> addListElementTask = LockExecution.<String>withLock(lock.writeLock())
@@ -57,7 +56,7 @@ class LockExecutionTest {
         .run(() -> list.add("A3"))
         .run(() -> {
           sleep(250);
-          if (latch.getCount() != 3L) {
+          if (latch.getCount() != 2L) {
             throw new IllegalStateException();
           }
           latch.countDown();
@@ -67,20 +66,12 @@ class LockExecutionTest {
         lock.readLock())
         .execute(() -> list.get(1))
         .run(() -> {
-          if (latch.getCount() > 2L) {
+          if (latch.getCount() > 1L) {
             throw new IllegalStateException();
           }
           latch.countDown();
         })
         .supply(list::size);
-    // and another task without lock which gets list size
-    final Supplier<Integer> getListTaskWithoutLock = () -> {
-      if (latch.getCount() > 2L) {
-        throw new IllegalStateException();
-      }
-      latch.countDown();
-      return list.size();
-    };
 
     // when run first future
     final CompletableFuture<Try<Void>> firstFuture = CompletableFuture
@@ -89,21 +80,16 @@ class LockExecutionTest {
     sleep(100);
     final CompletableFuture<Try<Integer>> secondFuture = CompletableFuture
         .supplyAsync(getListSizeTaskWithLock::execute, executorService);
-    // and run third future
-    final CompletableFuture<Integer> thirdFuture = CompletableFuture
-        .supplyAsync(getListTaskWithoutLock, executorService);
 
     // then second future returns expected size
     assertThat(secondFuture.join().get()).isEqualTo(expectedSize);
-    // and third future returns expected size
-    assertThat(thirdFuture.join()).isEqualTo(expectedSize);
     // and latch is already 0
     assertThat(latch.getCount()).isEqualTo(0L);
   }
 
   @Test
   void shouldIgnoreReadLock() {
-// given lock
+    // given lock
     final ReadWriteLock lock = new ReentrantReadWriteLock();
     // and list with 2 items
     final List<String> list = new ArrayList<>();
@@ -113,7 +99,7 @@ class LockExecutionTest {
     final int initialSize = list.size();
 
     // and executor service
-    final ExecutorService executorService = givenExecutorService();
+    final ExecutorService executorService = TestUtils.fixedThreadPoolExecutor(3);
 
     // and countdown latch
     final CountDownLatch latch = new CountDownLatch(3);
@@ -157,19 +143,5 @@ class LockExecutionTest {
     assertThat(thirdFuture.join()).isEqualTo(initialSize);
     // and latch not yet finished counting down
     assertThat(latch.getCount()).isGreaterThan(0L);
-  }
-  
-  private ExecutorService givenExecutorService() {
-    final ThreadFactory threadFactory = new LockExecutionThreadFactory(
-        LockExecutionTest.class.getSimpleName(), 1, true);
-    return Executors.newFixedThreadPool(2, threadFactory);
-  }
-
-  private static void sleep(final long millis) {
-    try {
-      Thread.sleep(millis);
-    } catch (final InterruptedException e) {
-      throw new RuntimeException(e);
-    }
   }
 }
