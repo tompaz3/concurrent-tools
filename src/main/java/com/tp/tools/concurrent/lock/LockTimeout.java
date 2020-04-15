@@ -19,7 +19,7 @@ package com.tp.tools.concurrent.lock;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-public final class LockTimeout {
+final class LockTimeout {
 
   private final long timeout;
   private final TimeUnit unit;
@@ -29,11 +29,11 @@ public final class LockTimeout {
     this.unit = unit;
   }
 
-  public long getTimeout() {
+  long getTimeout() {
     return timeout;
   }
 
-  public TimeUnit getUnit() {
+  TimeUnit getUnit() {
     return unit;
   }
 
@@ -55,31 +55,31 @@ public final class LockTimeout {
     return Objects.hash(timeout, unit);
   }
 
-  public static LockTimeout nanos(final long timeout) {
+  static LockTimeout nanos(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.NANOSECONDS);
   }
 
-  public static LockTimeout micros(final long timeout) {
+  static LockTimeout micros(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.MICROSECONDS);
   }
 
-  public static LockTimeout millis(final long timeout) {
+  static LockTimeout millis(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.MILLISECONDS);
   }
 
-  public static LockTimeout seconds(final long timeout) {
+  static LockTimeout seconds(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.SECONDS);
   }
 
-  public static LockTimeout minutes(final long timeout) {
+  static LockTimeout minutes(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.MINUTES);
   }
 
-  public static LockTimeout hours(final long timeout) {
+  static LockTimeout hours(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.HOURS);
   }
 
-  public static LockTimeout days(final long timeout) {
+  static LockTimeout days(final long timeout) {
     return new LockTimeout(timeout, TimeUnit.DAYS);
   }
 }
