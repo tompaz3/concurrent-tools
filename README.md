@@ -34,6 +34,10 @@ After having executed provided commands, the lock is released in the `try-finall
 
 `execute()` method returns [Vavr.io](https://www.vavr.io/) `Try<T>`.
 
+This API supports timeout when waiting for lock acquisition, 
+using `java.util.concurrent.locks.Lock.tryLock(long time, TimeUnit unit)`.
+
+**Example**
 ```
 private final Store<CarId, Car> cars = ... // some store containing cars by carIds
 
@@ -48,6 +52,25 @@ Try<UpdatedCar> updateIfExists(CarUpdated event) {
     .execute();
 }
 ```
+**Example with timeout**
+```
+private final Store<CarId, Car> cars = ... // some store containing cars by carIds
+
+Try<UpdatedCar> updateIfExists(CarUpdated event) {
+  return LockExecution.<Optional<Car>>withLock(writeLock()) // get write lock, write lock 
+                                                            // might be already locking this instance
+                                                            // in a different thread
+    .execute(() -> cars.get(event.getCarId()))  // let's assume, store returns Optional<Car>
+    .filter(Optional::isPresent)
+    .map(Optional::get)
+    .supply(event::toCar)
+    .map(car -> cars.store(car.getCarId(), car))
+    .map(UpdatedCar::fromCar)
+    .withLockTimeout()
+    .seconds(2L)    // wait max. 2 seconds for lock acquiring
+    .execute();
+}
+```
 
 #### Methods:
 
@@ -56,7 +79,7 @@ and returns `LockExecution<K>` instance.
 * `.flatMap(Function<T,LockExecution<K>> mapper)` - applies `mapper` function to the current execution
 result and returns `mapper` result (`LockExecution<K>` instance).
 * `.supply(Supplier<K> supplier)` - ignores current execution result and generates new result.
-Returns `LockExecution<K>` intance with supplied result.
+Returns `LockExecution<K>` instance with supplied result.
 * `.run(Runnable runnable)` - ignores current execution result and executes passed `runnable`.
 Always returns `LockExecution<Void>` type, which does not hold any result (`null`). 
 _// TODO: find better return value than `null` for this case_
@@ -64,7 +87,10 @@ _// TODO: find better return value than `null` for this case_
     * if result doesn't pass the test, `LockExection.none()` is returned, which cannot perform
     any operations and will return `null` value. _// TODO: find better return value than `null` 
     for this case_
-    * if result passes the test, current `LocKExection` instance is returned
+    * if result passes the test, current `LockExecution` instance is returned.
+* `.withLockTimeout()` - use when you want your lock to be executed with timeout, 
+  using `Lock.tryLock(long ,TimeUnit)`. This returns builder for `TimeoutLockExecution` which is
+  `LockExecution` implementation supporting timeout when acquiring the lock.
 
 ### ReadWriteLock
 This tool uses `java.util.concurrent.locks.ReadWriteLock` to provide lock.
