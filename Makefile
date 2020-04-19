@@ -1,8 +1,8 @@
 install:
-	mvn install
+	./mvnw install
 
 clean-install:
-	mvn clean install
+	./mvnw clean install
 
 DEPLOY_VERSION=$(shell echo ${VERSION} | grep -o -E '([0-9]+\.){2}[0-9]+')
 deploy:
